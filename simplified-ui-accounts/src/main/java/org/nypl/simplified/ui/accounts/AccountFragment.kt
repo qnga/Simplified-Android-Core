@@ -279,6 +279,7 @@ class AccountFragment : Fragment() {
       is AccountProviderAuthenticationDescription.COPPAAgeGate ->
         AsLoginButtonDisabled
 
+      is AccountProviderAuthenticationDescription.SAML2_0,
       is AccountProviderAuthenticationDescription.OAuthWithIntermediary -> {
         if (this.determineEULAIsSatisfied()) {
           AsLoginButtonEnabled {
@@ -556,6 +557,12 @@ class AccountFragment : Fragment() {
         buttonText.visibility = View.GONE
       }
     )
+  }
+
+  private fun onTrySAML2Login(
+    authenticationDescription: AccountProviderAuthenticationDescription.SAML2_0
+  ) {
+    this.viewModel.loginExplicitlyRequested = true
   }
 
   private fun onTryOAuthLogin(
@@ -1053,6 +1060,8 @@ class AccountFragment : Fragment() {
     this.viewModel.loginExplicitlyRequested = true
 
     return when (val description = this.account.provider.authentication) {
+      is AccountProviderAuthenticationDescription.SAML2_0 ->
+        this.onTrySAML2Login(description)
       is AccountProviderAuthenticationDescription.OAuthWithIntermediary ->
         this.onTryOAuthLogin(description)
 
@@ -1089,6 +1098,7 @@ class AccountFragment : Fragment() {
        * we *do* want local books to be deleted as part of a logout attempt.
        */
 
+      is AccountProviderAuthenticationDescription.SAML2_0,
       is AccountProviderAuthenticationDescription.OAuthWithIntermediary,
       is AccountProviderAuthenticationDescription.COPPAAgeGate,
       is AccountProviderAuthenticationDescription.Basic -> {

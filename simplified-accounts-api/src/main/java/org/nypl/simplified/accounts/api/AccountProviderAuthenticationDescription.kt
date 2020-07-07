@@ -39,6 +39,13 @@ sealed class AccountProviderAuthenticationDescription {
 
     const val OAUTH_INTERMEDIARY_TYPE =
       "http://librarysimplified.org/authtype/OAuth-with-intermediary"
+
+    /**
+     * The type used to identify SAML 2.0.
+     */
+
+    const val SAML_2_0_TYPE =
+      "http://librarysimplified.org/authtype/SAML-2.0"
   }
 
   /**
@@ -199,4 +206,24 @@ sealed class AccountProviderAuthenticationDescription {
     override val description: String =
       ANONYMOUS_TYPE
   }
+
+  /**
+   * SAML 2.0.
+   */
+
+  data class SAML2_0(
+    override val description: String,
+
+    /**
+     * The URI used to perform authentication.
+     */
+
+    val authenticate: URI,
+
+    /**
+     * The URI of the authentication logo.
+     */
+
+    val logoURI: URI?
+  ) : AccountProviderAuthenticationDescription()
 }
