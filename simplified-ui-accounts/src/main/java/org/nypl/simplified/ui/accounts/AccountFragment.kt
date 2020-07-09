@@ -5,13 +5,11 @@ import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.text.method.PasswordTransformationMethod
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.CheckBox
-import android.widget.EditText
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.Switch
@@ -40,7 +38,6 @@ import org.nypl.simplified.accounts.api.AccountLoginState.AccountLoggingOut
 import org.nypl.simplified.accounts.api.AccountLoginState.AccountLoginFailed
 import org.nypl.simplified.accounts.api.AccountLoginState.AccountLogoutFailed
 import org.nypl.simplified.accounts.api.AccountLoginState.AccountNotLoggedIn
-import org.nypl.simplified.accounts.api.AccountProviderAuthenticationDescription.KeyboardInput
 import org.nypl.simplified.accounts.database.api.AccountType
 import org.nypl.simplified.accounts.database.api.AccountsDatabaseNonexistentException
 import org.nypl.simplified.buildconfig.api.BuildConfigurationServiceType
@@ -59,12 +56,12 @@ import org.nypl.simplified.profiles.controller.api.ProfileAccountLoginRequest.OA
 import org.nypl.simplified.profiles.controller.api.ProfilesControllerType
 import org.nypl.simplified.taskrecorder.api.TaskStep
 import org.nypl.simplified.threads.NamedThreadPools
-import org.nypl.simplified.ui.accounts.AccountFragment.LoginButtonStatus.AsCancelButtonDisabled
-import org.nypl.simplified.ui.accounts.AccountFragment.LoginButtonStatus.AsCancelButtonEnabled
-import org.nypl.simplified.ui.accounts.AccountFragment.LoginButtonStatus.AsLoginButtonDisabled
-import org.nypl.simplified.ui.accounts.AccountFragment.LoginButtonStatus.AsLoginButtonEnabled
-import org.nypl.simplified.ui.accounts.AccountFragment.LoginButtonStatus.AsLogoutButtonDisabled
-import org.nypl.simplified.ui.accounts.AccountFragment.LoginButtonStatus.AsLogoutButtonEnabled
+import org.nypl.simplified.ui.accounts.AccountLoginButtonStatus.AsCancelButtonDisabled
+import org.nypl.simplified.ui.accounts.AccountLoginButtonStatus.AsCancelButtonEnabled
+import org.nypl.simplified.ui.accounts.AccountLoginButtonStatus.AsLoginButtonDisabled
+import org.nypl.simplified.ui.accounts.AccountLoginButtonStatus.AsLoginButtonEnabled
+import org.nypl.simplified.ui.accounts.AccountLoginButtonStatus.AsLogoutButtonDisabled
+import org.nypl.simplified.ui.accounts.AccountLoginButtonStatus.AsLogoutButtonEnabled
 import org.nypl.simplified.ui.errorpage.ErrorPageParameters
 import org.nypl.simplified.ui.images.ImageAccountIcons
 import org.nypl.simplified.ui.images.ImageLoaderType
@@ -89,17 +86,7 @@ class AccountFragment : Fragment() {
   private lateinit var authentication: ViewGroup
   private lateinit var authenticationAlternatives: ViewGroup
   private lateinit var authenticationAlternativesButtons: ViewGroup
-  private lateinit var authenticationBasic: ViewGroup
-  private lateinit var authenticationBasicLogo: Button
-  private lateinit var authenticationBasicPass: EditText
-  private lateinit var authenticationBasicPassLabel: TextView
-  private lateinit var authenticationBasicPassListener: OnTextChangeListener
-  private lateinit var authenticationBasicShowPass: CheckBox
-  private lateinit var authenticationBasicUser: EditText
-  private lateinit var authenticationBasicUserLabel: TextView
-  private lateinit var authenticationBasicUserListener: OnTextChangeListener
-  private lateinit var authenticationCOPPA: ViewGroup
-  private lateinit var authenticationCOPPAOver13: Switch
+  private lateinit var authenticationViews: AccountAuthenticationViews
   private lateinit var backgroundExecutor: ListeningScheduledExecutorService
   private lateinit var bookmarkSync: ViewGroup
   private lateinit var bookmarkSyncCheck: Switch
@@ -108,10 +95,9 @@ class AccountFragment : Fragment() {
   private lateinit var documents: DocumentStoreType
   private lateinit var eulaCheckbox: CheckBox
   private lateinit var imageLoader: ImageLoaderType
-  private lateinit var login: ViewGroup
-  private lateinit var loginButton: Button
+  private lateinit var loginProgress: ViewGroup
   private lateinit var loginButtonErrorDetails: Button
-  private lateinit var loginProgress: ProgressBar
+  private lateinit var loginProgressBar: ProgressBar
   private lateinit var loginProgressText: TextView
   private lateinit var loginTitle: ViewGroup
   private lateinit var parameters: AccountFragmentParameters
@@ -124,10 +110,10 @@ class AccountFragment : Fragment() {
   private val cardCreatorResultCode = 101
   private val closing = AtomicBoolean(false)
   private val imageButtonLoadingTag = "IMAGE_BUTTON_LOADING"
+  private val nyplCardCreatorScheme = "nypl.card-creator"
   private var accountSubscription: Disposable? = null
   private var cardCreatorService: CardCreatorServiceType? = null
   private var profileSubscription: Disposable? = null
-  private val nyplCardCreatorScheme = "nypl.card-creator"
 
   companion object {
 
@@ -140,7 +126,7 @@ class AccountFragment : Fragment() {
 
     fun create(parameters: AccountFragmentParameters): AccountFragment {
       val arguments = Bundle()
-      arguments.putSerializable(PARAMETERS_ID, parameters)
+      arguments.putSerializable(this.PARAMETERS_ID, parameters)
       val fragment = AccountFragment()
       fragment.arguments = arguments
       return fragment
@@ -188,36 +174,16 @@ class AccountFragment : Fragment() {
 
     this.authentication =
       layout.findViewById(R.id.auth)
+    this.authenticationViews =
+      AccountAuthenticationViews(
+        viewGroup = this.authentication,
+        onUsernamePasswordChangeListener = this::onBasicUserPasswordChanged
+      )
+
     this.authenticationAlternatives =
       layout.findViewById(R.id.accountAuthAlternatives)
     this.authenticationAlternativesButtons =
       layout.findViewById(R.id.accountAuthAlternativesButtons)
-
-    this.authenticationCOPPA =
-      this.authentication.findViewById(R.id.authCOPPA)
-    this.authenticationCOPPAOver13 =
-      this.authenticationCOPPA.findViewById(R.id.authCOPPASwitch)
-
-    this.authenticationBasic =
-      this.authentication.findViewById(R.id.authBasic)
-    this.authenticationBasicLogo =
-      this.authenticationBasic.findViewById(R.id.authBasicLogo)
-    this.authenticationBasicUser =
-      this.authenticationBasic.findViewById(R.id.authBasicUserNameField)
-    this.authenticationBasicUserLabel =
-      this.authenticationBasic.findViewById(R.id.authBasicUserNameLabel)
-    this.authenticationBasicUserListener =
-      OnTextChangeListener(this::onBasicUserChanged)
-    this.authenticationBasicPass =
-      this.authenticationBasic.findViewById(R.id.authBasicPasswordField)
-    this.authenticationBasicPassLabel =
-      this.authenticationBasic.findViewById(R.id.authBasicPasswordLabel)
-    this.authenticationBasicPassListener =
-      OnTextChangeListener(this::onBasicPasswordChanged)
-    this.authenticationBasicShowPass =
-      this.authenticationBasic.findViewById(R.id.authBasicPasswordShow)
-
-    this.authenticationCOPPA.visibility = View.INVISIBLE
 
     this.bookmarkSync =
       layout.findViewById(R.id.accountSyncBookmarks)
@@ -228,14 +194,12 @@ class AccountFragment : Fragment() {
 
     this.loginTitle =
       layout.findViewById(R.id.accountTitleAnnounce)
-    this.login =
-      layout.findViewById(R.id.accountLogin)
     this.loginProgress =
       layout.findViewById(R.id.accountLoginProgress)
+    this.loginProgressBar =
+      layout.findViewById(R.id.accountLoginProgressBar)
     this.loginProgressText =
       layout.findViewById(R.id.accountLoginProgressText)
-    this.loginButton =
-      layout.findViewById(R.id.accountLoginButton)
     this.loginButtonErrorDetails =
       layout.findViewById(R.id.accountLoginButtonErrorDetails)
     this.eulaCheckbox =
@@ -248,7 +212,7 @@ class AccountFragment : Fragment() {
       layout.findViewById(R.id.accountCardCreator)
 
     this.loginButtonErrorDetails.visibility = View.GONE
-    this.loginProgress.visibility = View.INVISIBLE
+    this.loginProgressBar.visibility = View.INVISIBLE
     this.loginProgressText.text = ""
     this.setLoginButtonStatus(AsLoginButtonDisabled)
 
@@ -260,59 +224,30 @@ class AccountFragment : Fragment() {
     return layout
   }
 
-  @Suppress("UNUSED_PARAMETER")
   @UiThread
-  private fun onBasicUserChanged(
-    sequence: CharSequence,
-    start: Int,
-    before: Int,
-    count: Int
+  private fun onBasicUserPasswordChanged(
+    username: AccountUsername,
+    password: AccountPassword
   ) {
     this.uiThread.checkIsUIThread()
     this.setLoginButtonStatus(this.determineLoginIsSatisfied())
   }
 
   @UiThread
-  private fun determineLoginIsSatisfied(): LoginButtonStatus {
-    return when (val auth = this.account.provider.authentication) {
-      is AccountProviderAuthenticationDescription.Anonymous,
-      is AccountProviderAuthenticationDescription.COPPAAgeGate ->
-        AsLoginButtonDisabled
+  private fun determineLoginIsSatisfied(): AccountLoginButtonStatus {
+    val authDescription = this.account.provider.authentication
+    val eulaOk = this.determineEULAIsSatisfied()
+    val loginPossible = authDescription.isLoginPossible
+    val satisfiedFor = this.authenticationViews.isSatisfiedFor(authDescription)
 
-      is AccountProviderAuthenticationDescription.SAML2_0,
-      is AccountProviderAuthenticationDescription.OAuthWithIntermediary -> {
-        if (this.determineEULAIsSatisfied()) {
-          AsLoginButtonEnabled {
-            this.loginFormLock()
-            this.tryLogin()
-          }
-        } else {
-          AsLoginButtonDisabled
-        }
+    this.logger.debug("eula: {}, possible: {}, satisfied: {}", eulaOk, loginPossible, satisfiedFor)
+    return if (eulaOk && loginPossible && satisfiedFor) {
+      AsLoginButtonEnabled {
+        this.loginFormLock()
+        this.tryLogin()
       }
-
-      is AccountProviderAuthenticationDescription.Basic -> {
-        val eulaOk =
-          this.determineEULAIsSatisfied()
-        val noUserRequired =
-          auth.keyboard == KeyboardInput.NO_INPUT
-        val noPasswordRequired =
-          auth.passwordKeyboard == KeyboardInput.NO_INPUT
-        val userOk =
-          this.authenticationBasicUser.text.isNotBlank() || noUserRequired
-        val passOk =
-          this.authenticationBasicPass.text.isNotBlank() || noPasswordRequired
-
-        this.logger.debug("login: eula ok: {}, user ok: {}, pass ok: {}", eulaOk, userOk, passOk)
-        if (userOk && passOk && eulaOk) {
-          AsLoginButtonEnabled {
-            this.loginFormLock()
-            this.tryLogin()
-          }
-        } else {
-          AsLoginButtonDisabled
-        }
-      }
+    } else {
+      AsLoginButtonDisabled
     }
   }
 
@@ -323,18 +258,6 @@ class AccountFragment : Fragment() {
     } else {
       true
     }
-  }
-
-  @Suppress("UNUSED_PARAMETER")
-  @UiThread
-  private fun onBasicPasswordChanged(
-    sequence: CharSequence,
-    start: Int,
-    before: Int,
-    count: Int
-  ) {
-    this.uiThread.checkIsUIThread()
-    this.setLoginButtonStatus(this.determineLoginIsSatisfied())
   }
 
   private fun shouldSignUpBeEnabled(): Boolean {
@@ -371,7 +294,7 @@ class AccountFragment : Fragment() {
             this.activity,
             this.cardCreatorResultCode,
             this.account.loginState is AccountLoggedIn,
-            this.authenticationBasicUser.text.toString().trim()
+            this.authenticationViews.getBasicUser().value.trim()
           )
         } else {
           // We rely on [shouldSignUpBeEnabled] to have disabled the button
@@ -379,7 +302,7 @@ class AccountFragment : Fragment() {
         }
       } else {
         val webCardCreator = Intent(Intent.ACTION_VIEW, Uri.parse(cardCreatorURI.toString()))
-        startActivity(webCardCreator)
+        this.startActivity(webCardCreator)
       }
     }
   }
@@ -432,18 +355,15 @@ class AccountFragment : Fragment() {
       this.eulaCheckbox.visibility = View.GONE
     }
 
-    this.authenticationBasicUser.addTextChangedListener(this.authenticationBasicUserListener)
-    this.authenticationBasicPass.addTextChangedListener(this.authenticationBasicPassListener)
-
     /*
      * Configure the COPPA age gate switch. If the user changes their age, a log out
      * is required.
      */
 
-    this.authenticationCOPPAOver13.setOnClickListener {}
-    this.authenticationCOPPAOver13.isChecked = this.isOver13()
-    this.authenticationCOPPAOver13.setOnClickListener(this.onAgeCheckboxClicked())
-    this.authenticationCOPPAOver13.isEnabled = true
+    this.authenticationViews.setCOPPAState(
+      isOver13 = this.isOver13(),
+      onAgeCheckboxClicked = this.onAgeCheckboxClicked()
+    )
 
     /*
      * Conditionally enable sign up button
@@ -458,22 +378,6 @@ class AccountFragment : Fragment() {
      */
 
     this.signUpButton.setOnClickListener { this.openCardCreator() }
-
-    /*
-     * Configure a checkbox listener that shows and hides the password field. Note that
-     * this will trigger the "text changed" listener on the password field, so we lock this
-     * checkbox during login/logout to avoid any chance of the UI becoming inconsistent.
-     */
-
-    this.authenticationBasicShowPass.setOnCheckedChangeListener { _, isChecked ->
-      if (isChecked) {
-        this.authenticationBasicPass.transformationMethod =
-          null
-      } else {
-        this.authenticationBasicPass.transformationMethod =
-          PasswordTransformationMethod.getInstance()
-      }
-    }
 
     /*
      * Configure the bookmark syncing switch to enable/disable syncing permissions.
@@ -533,6 +437,27 @@ class AccountFragment : Fragment() {
           )
           this.authenticationAlternativesButtons.addView(layout)
         }
+
+        is AccountProviderAuthenticationDescription.SAML2_0 -> {
+          val layout =
+            this.layoutInflater.inflate(
+              R.layout.auth_saml,
+              this.authenticationAlternativesButtons,
+              false
+            )
+
+          this.configureImageButton(
+            container = layout.findViewById(R.id.authSAMLLogo),
+            buttonText = layout.findViewById(R.id.authSAMLLogoText),
+            buttonImage = layout.findViewById(R.id.authSAMLLogoImage),
+            text = this.getString(R.string.accountLoginWith, alternative.description),
+            logoURI = alternative.logoURI,
+            onClick = {
+              this.onTrySAML2Login(alternative)
+            }
+          )
+          this.authenticationAlternativesButtons.addView(layout)
+        }
       }
     }
   }
@@ -576,6 +501,23 @@ class AccountFragment : Fragment() {
       )
     )
     this.sendOAuthIntent(authenticationDescription)
+  }
+
+  private fun onTryBasicLogin(description: AccountProviderAuthenticationDescription.Basic) {
+    val accountPassword : AccountPassword =
+      this.authenticationViews.getBasicPassword()
+    val accountUsername : AccountUsername =
+      this.authenticationViews.getBasicUser()
+
+    val request =
+      Basic(
+        accountId = this.account.id,
+        description = description,
+        password = accountPassword,
+        username = accountUsername
+      )
+
+    this.profilesController.profileAccountLogin(request)
   }
 
   private fun sendOAuthIntent(
@@ -646,9 +588,7 @@ class AccountFragment : Fragment() {
     this.backgroundExecutor.shutdown()
     this.accountIcon.setImageDrawable(null)
     this.eulaCheckbox.setOnCheckedChangeListener(null)
-    this.authenticationCOPPAOver13.setOnClickListener {}
-    this.authenticationBasicUser.removeTextChangedListener(this.authenticationBasicUserListener)
-    this.authenticationBasicPass.removeTextChangedListener(this.authenticationBasicPassListener)
+    this.authenticationViews.clear()
     this.accountSubscription?.dispose()
     this.profileSubscription?.dispose()
   }
@@ -675,77 +615,13 @@ class AccountFragment : Fragment() {
     this.bookmarkSyncCheck.isEnabled = isSupported
     this.bookmarkSyncLabel.isEnabled = isSupported
 
-    when (val auth = this.account.provider.authentication) {
-      is AccountProviderAuthenticationDescription.COPPAAgeGate -> {
-        this.authentication.visibility = View.VISIBLE
-        this.authenticationCOPPA.visibility = View.VISIBLE
-        this.authenticationBasic.visibility = View.INVISIBLE
-      }
-
-      is AccountProviderAuthenticationDescription.Basic -> {
-        this.authentication.visibility = View.VISIBLE
-        this.authenticationCOPPA.visibility = View.INVISIBLE
-        this.authenticationBasic.visibility = View.VISIBLE
-
-        /*
-         * Configure the presence of the individual fields based on keyboard input values
-         * given in the authentication document.
-         *
-         * TODO: Add the extra input validation for the more precise types such as NUMBER_PAD.
-         */
-
-        when (auth.keyboard) {
-          KeyboardInput.NO_INPUT -> {
-            this.authenticationBasicUserLabel.visibility = View.GONE
-            this.authenticationBasicUser.visibility = View.GONE
-          }
-          KeyboardInput.DEFAULT,
-          KeyboardInput.EMAIL_ADDRESS,
-          KeyboardInput.NUMBER_PAD -> {
-            this.authenticationBasicUserLabel.visibility = View.VISIBLE
-            this.authenticationBasicUser.visibility = View.VISIBLE
-          }
-        }
-
-        when (auth.passwordKeyboard) {
-          KeyboardInput.NO_INPUT -> {
-            this.authenticationBasicPassLabel.visibility = View.GONE
-            this.authenticationBasicPass.visibility = View.GONE
-            this.authenticationBasicShowPass.visibility = View.GONE
-          }
-          KeyboardInput.DEFAULT,
-          KeyboardInput.EMAIL_ADDRESS,
-          KeyboardInput.NUMBER_PAD -> {
-            this.authenticationBasicPassLabel.visibility = View.VISIBLE
-            this.authenticationBasicPass.visibility = View.VISIBLE
-            this.authenticationBasicShowPass.visibility = View.VISIBLE
-          }
-        }
-
-        this.authenticationBasicUserLabel.text =
-          auth.labels["LOGIN"] ?: this.authenticationBasicUserLabel.text
-        this.authenticationBasicPassLabel.text =
-          auth.labels["PASSWORD"] ?: this.authenticationBasicPassLabel.text
-      }
-
-      is AccountProviderAuthenticationDescription.OAuthWithIntermediary -> {
-        this.authentication.visibility = View.GONE
-      }
-
-      is AccountProviderAuthenticationDescription.Anonymous -> {
-        this.authentication.visibility = View.GONE
-        this.login.visibility = View.GONE
-        this.setLoginButtonStatus(AsLoginButtonDisabled)
-      }
-    }
+    this.authenticationViews.showFor(this.account.provider.authentication)
 
     return when (val loginState = this.account.loginState) {
       AccountNotLoggedIn -> {
-        this.authenticationBasicUser.setText("")
-        this.authenticationBasicPass.setText("")
-        this.loginButtonErrorDetails.visibility = View.GONE
-        this.loginProgress.visibility = View.INVISIBLE
-        this.loginProgressText.text = ""
+        this.authenticationViews.setBasicUserAndPass("", "")
+
+        this.loginProgress.visibility = View.GONE
         this.setLoginButtonStatus(AsLoginButtonEnabled {
           this.loginFormLock()
           this.tryLogin()
@@ -755,6 +631,7 @@ class AccountFragment : Fragment() {
 
       is AccountLoggingIn -> {
         this.loginProgress.visibility = View.VISIBLE
+        this.loginProgressBar.visibility = View.VISIBLE
         this.loginProgressText.text = loginState.status
         this.loginButtonErrorDetails.visibility = View.GONE
         this.loginFormLock()
@@ -771,6 +648,7 @@ class AccountFragment : Fragment() {
 
       is AccountLoggingInWaitingForExternalAuthentication -> {
         this.loginProgress.visibility = View.VISIBLE
+        this.loginProgressBar.visibility = View.VISIBLE
         this.loginProgressText.text = loginState.status
         this.loginButtonErrorDetails.visibility = View.GONE
         this.loginFormLock()
@@ -785,7 +663,8 @@ class AccountFragment : Fragment() {
       }
 
       is AccountLoginFailed -> {
-        this.loginProgress.visibility = View.INVISIBLE
+        this.loginProgress.visibility = View.VISIBLE
+        this.loginProgressBar.visibility = View.GONE
         this.loginProgressText.text = loginState.taskResult.steps.last().resolution.message
         this.loginFormUnlock()
         this.cancelImageButtonLoading()
@@ -803,23 +682,17 @@ class AccountFragment : Fragment() {
       is AccountLoggedIn -> {
         when (val creds = loginState.credentials) {
           is AccountAuthenticationCredentials.Basic -> {
-            this.authentication.visibility = View.VISIBLE
-            this.authenticationCOPPA.visibility = View.INVISIBLE
-            this.authenticationBasic.visibility = View.VISIBLE
-
-            this.authenticationBasicUser.setText(creds.userName.value)
-            this.authenticationBasicPass.setText(creds.password.value)
+            this.authenticationViews.setBasicUserAndPass(
+              user = creds.userName.value,
+              password = creds.password.value
+            )
           }
           is AccountAuthenticationCredentials.OAuthWithIntermediary -> {
-            this.authentication.visibility = View.GONE
-            this.authenticationCOPPA.visibility = View.INVISIBLE
-            this.authenticationBasic.visibility = View.INVISIBLE
+
           }
         }
 
-        this.loginProgress.visibility = View.INVISIBLE
-        this.loginProgressText.text = ""
-
+        this.loginProgress.visibility = View.GONE
         this.loginFormLock()
         this.loginButtonErrorDetails.visibility = View.GONE
         this.setLoginButtonStatus(AsLogoutButtonEnabled {
@@ -842,16 +715,19 @@ class AccountFragment : Fragment() {
       is AccountLoggingOut -> {
         when (val creds = loginState.credentials) {
           is AccountAuthenticationCredentials.Basic -> {
-            this.authenticationBasicUser.setText(creds.userName.value)
-            this.authenticationBasicPass.setText(creds.password.value)
+            this.authenticationViews.setBasicUserAndPass(
+              user = creds.userName.value,
+              password = creds.password.value
+            )
           }
           is AccountAuthenticationCredentials.OAuthWithIntermediary -> {
             // No UI
           }
         }
 
-        this.loginButtonErrorDetails.visibility = View.GONE
         this.loginProgress.visibility = View.VISIBLE
+        this.loginButtonErrorDetails.visibility = View.GONE
+        this.loginProgressBar.visibility = View.VISIBLE
         this.loginProgressText.text = loginState.status
         this.loginFormLock()
         this.setLoginButtonStatus(AsLogoutButtonDisabled)
@@ -860,15 +736,18 @@ class AccountFragment : Fragment() {
       is AccountLogoutFailed -> {
         when (val creds = loginState.credentials) {
           is AccountAuthenticationCredentials.Basic -> {
-            this.authenticationBasicUser.setText(creds.userName.value)
-            this.authenticationBasicPass.setText(creds.password.value)
+            this.authenticationViews.setBasicUserAndPass(
+              user = creds.userName.value,
+              password = creds.password.value
+            )
           }
           is AccountAuthenticationCredentials.OAuthWithIntermediary -> {
             // No UI
           }
         }
 
-        this.loginProgress.visibility = View.INVISIBLE
+        this.loginProgress.visibility = View.VISIBLE
+        this.loginProgressBar.visibility = View.GONE
         this.loginProgressText.text = loginState.taskResult.steps.last().resolution.message
         this.cancelImageButtonLoading()
         this.loginFormLock()
@@ -889,60 +768,23 @@ class AccountFragment : Fragment() {
     this.imageLoader.loader.cancelTag(this.imageButtonLoadingTag)
   }
 
-  sealed class LoginButtonStatus {
-    data class AsLogoutButtonEnabled(
-      val onClick: () -> Unit
-    ) : LoginButtonStatus()
-
-    object AsLogoutButtonDisabled : LoginButtonStatus()
-
-    data class AsLoginButtonEnabled(
-      val onClick: () -> Unit
-    ) : LoginButtonStatus()
-
-    object AsLoginButtonDisabled : LoginButtonStatus()
-
-    data class AsCancelButtonEnabled(
-      val onClick: () -> Unit
-    ) : LoginButtonStatus()
-
-    object AsCancelButtonDisabled : LoginButtonStatus()
-  }
-
   private fun setLoginButtonStatus(
-    status: LoginButtonStatus
+    status: AccountLoginButtonStatus
   ) {
+    this.authenticationViews.setLoginButtonStatus(status)
+
     return when (status) {
-      is AsLoginButtonEnabled -> {
-        this.loginButton.setText(R.string.accountLogin)
-        this.signUpLabel.setText(R.string.accountCardCreatorLabel)
-        this.loginButton.isEnabled = true
-        this.loginButton.setOnClickListener { status.onClick.invoke() }
-      }
+      is AsLoginButtonEnabled,
       AsLoginButtonDisabled -> {
-        this.loginButton.setText(R.string.accountLogin)
         this.signUpLabel.setText(R.string.accountCardCreatorLabel)
-        this.loginButton.isEnabled = false
       }
-      is AsCancelButtonEnabled -> {
-        this.loginButton.setText(R.string.accountCancel)
-        this.loginButton.isEnabled = true
-        this.loginButton.setOnClickListener { status.onClick.invoke() }
-      }
-      is AsLogoutButtonEnabled -> {
-        this.loginButton.setText(R.string.accountLogout)
-        this.signUpLabel.setText(R.string.accountWantChildCard)
-        this.loginButton.isEnabled = true
-        this.loginButton.setOnClickListener { status.onClick.invoke() }
-      }
+      is AsLogoutButtonEnabled,
       AsLogoutButtonDisabled -> {
-        this.loginButton.setText(R.string.accountLogout)
         this.signUpLabel.setText(R.string.accountWantChildCard)
-        this.loginButton.isEnabled = false
       }
+      is AsCancelButtonEnabled,
       AsCancelButtonDisabled -> {
-        this.loginButton.setText(R.string.accountCancel)
-        this.loginButton.isEnabled = false
+
       }
     }
   }
@@ -992,14 +834,12 @@ class AccountFragment : Fragment() {
   }
 
   private fun loginFormLock() {
-    this.authenticationCOPPAOver13.setOnClickListener {}
-    this.authenticationCOPPAOver13.isChecked = this.isOver13()
-    this.authenticationCOPPAOver13.setOnClickListener(this.onAgeCheckboxClicked())
-    this.authenticationCOPPAOver13.isEnabled = false
+    this.authenticationViews.setCOPPAState(
+      isOver13 = this.isOver13(),
+      onAgeCheckboxClicked = this.onAgeCheckboxClicked()
+    )
 
-    this.authenticationBasicUser.isEnabled = false
-    this.authenticationBasicPass.isEnabled = false
-    this.authenticationBasicShowPass.isEnabled = false
+    this.authenticationViews.lock()
     this.eulaCheckbox.isEnabled = false
 
     this.setLoginButtonStatus(AsLoginButtonDisabled)
@@ -1007,14 +847,12 @@ class AccountFragment : Fragment() {
   }
 
   private fun loginFormUnlock() {
-    this.authenticationCOPPAOver13.setOnClickListener {}
-    this.authenticationCOPPAOver13.isChecked = this.isOver13()
-    this.authenticationCOPPAOver13.setOnClickListener(this.onAgeCheckboxClicked())
-    this.authenticationCOPPAOver13.isEnabled = true
+    this.authenticationViews.setCOPPAState(
+      isOver13 = this.isOver13(),
+      onAgeCheckboxClicked = this.onAgeCheckboxClicked()
+    )
 
-    this.authenticationBasicUser.isEnabled = true
-    this.authenticationBasicPass.isEnabled = true
-    this.authenticationBasicShowPass.isEnabled = true
+    this.authenticationViews.unlock()
     this.eulaCheckbox.isEnabled = true
 
     val loginSatisfied = this.determineLoginIsSatisfied()
@@ -1050,8 +888,10 @@ class AccountFragment : Fragment() {
             this.reconfigureAccountUI()
           })
         } else {
+          // Don't care about events for other accounts
         }
       else -> {
+        // Don't care about other events
       }
     }
   }
@@ -1064,27 +904,12 @@ class AccountFragment : Fragment() {
         this.onTrySAML2Login(description)
       is AccountProviderAuthenticationDescription.OAuthWithIntermediary ->
         this.onTryOAuthLogin(description)
+      is AccountProviderAuthenticationDescription.Basic ->
+        this.onTryBasicLogin(description)
 
       is AccountProviderAuthenticationDescription.Anonymous,
       is AccountProviderAuthenticationDescription.COPPAAgeGate ->
         throw UnreachableCodeException()
-
-      is AccountProviderAuthenticationDescription.Basic -> {
-        val accountPassword =
-          AccountPassword(this.authenticationBasicPass.text.toString())
-        val accountUsername =
-          AccountUsername(this.authenticationBasicUser.text.toString())
-        val request =
-          Basic(
-            accountId = this.account.id,
-            description = description,
-            password = accountPassword,
-            username = accountUsername
-          )
-
-        this.profilesController.profileAccountLogin(request)
-        Unit
-      }
     }
   }
 
@@ -1158,7 +983,10 @@ class AccountFragment : Fragment() {
       .setTitle(R.string.accountCOPPADeleteBooks)
       .setMessage(R.string.accountCOPPADeleteBooksConfirm)
       .setNegativeButton(R.string.accountCancel) { _, _ ->
-        this.authenticationCOPPAOver13.isChecked = isOver13
+        this.authenticationViews.setCOPPAState(
+          isOver13 = isOver13,
+          onAgeCheckboxClicked = this.onAgeCheckboxClicked()
+        )
       }
       .setPositiveButton(R.string.accountDelete) { _, _ ->
         this.loginFormLock()
@@ -1195,8 +1023,11 @@ class AccountFragment : Fragment() {
           if (data != null) {
             val barcode = data.getStringExtra("barcode")
             val pin = data.getStringExtra("pin")
-            this.authenticationBasicUser.setText(barcode, TextView.BufferType.EDITABLE)
-            this.authenticationBasicPass.setText(pin, TextView.BufferType.EDITABLE)
+
+            this.authenticationViews.setBasicUserAndPass(
+              user = barcode,
+              password = pin
+            )
             this.tryLogin()
           }
         }

@@ -49,6 +49,12 @@ sealed class AccountProviderAuthenticationDescription {
   }
 
   /**
+   * `true` if this type of authentication involves a "login" operation
+   */
+
+  abstract val isLoginPossible: Boolean
+
+  /**
    * The authentication description.
    */
 
@@ -79,6 +85,9 @@ sealed class AccountProviderAuthenticationDescription {
         "URIs ${this.greaterEqual13} and ${this.under13} must differ"
       )
     }
+
+    override val isLoginPossible: Boolean =
+      false
 
     override val description: String =
       COPPA_TYPE
@@ -171,6 +180,9 @@ sealed class AccountProviderAuthenticationDescription {
     val logoURI: URI?
   ) : AccountProviderAuthenticationDescription() {
 
+    override val isLoginPossible: Boolean =
+      true
+
     init {
       Preconditions.checkArgument(
         this.barcodeFormat?.all { c -> c.isUpperCase() || c.isWhitespace() } ?: true,
@@ -196,13 +208,18 @@ sealed class AccountProviderAuthenticationDescription {
      */
 
     val logoURI: URI?
-  ) : AccountProviderAuthenticationDescription()
+  ) : AccountProviderAuthenticationDescription() {
+    override val isLoginPossible: Boolean =
+      true
+  }
 
   /**
    * Anonymous authentication (equivalent to no authentication)
    */
 
   object Anonymous : AccountProviderAuthenticationDescription() {
+    override val isLoginPossible: Boolean =
+      false
     override val description: String =
       ANONYMOUS_TYPE
   }
@@ -225,5 +242,8 @@ sealed class AccountProviderAuthenticationDescription {
      */
 
     val logoURI: URI?
-  ) : AccountProviderAuthenticationDescription()
+  ) : AccountProviderAuthenticationDescription() {
+    override val isLoginPossible: Boolean =
+      true
+  }
 }

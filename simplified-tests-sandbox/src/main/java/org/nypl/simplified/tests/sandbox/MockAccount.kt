@@ -43,6 +43,25 @@ class MockAccount(override val id: AccountID) : AccountType {
     )
   }
 
+  private fun coppa(): AccountProviderAuthenticationDescription {
+    return AccountProviderAuthenticationDescription.COPPAAgeGate(
+      greaterEqual13 = URI.create("urn:over13"),
+      under13 = URI.create("urn:under13")
+    )
+  }
+
+  private fun anonymous(): AccountProviderAuthenticationDescription {
+    return AccountProviderAuthenticationDescription.Anonymous
+  }
+
+  private fun saml20(): AccountProviderAuthenticationDescription {
+    return AccountProviderAuthenticationDescription.SAML2_0(
+      authenticate = URI.create("urn:create"),
+      description = "What?",
+      logoURI = URI.create("https://circulation.openebooks.us/images/CleverLoginButton280.png")
+    )
+  }
+
   private var accountProviderCurrent: AccountProviderType =
     run {
       val authentication = basic()
@@ -52,7 +71,7 @@ class MockAccount(override val id: AccountID) : AccountType {
         annotationsURI = null,
         authentication = authentication,
         authenticationAlternatives = listOf(
-          this.oauth()
+          this.saml20()
         ),
         authenticationDocumentURI = null,
         cardCreatorURI = null,

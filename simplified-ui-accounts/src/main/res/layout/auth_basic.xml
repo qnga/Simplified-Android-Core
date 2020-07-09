@@ -38,13 +38,11 @@
     android:layout_height="wrap_content"
     android:layout_marginStart="16dp"
     android:layout_marginTop="24dp"
-    android:layout_marginBottom="16dp"
     android:ellipsize="end"
     android:labelFor="@id/authBasicPasswordField"
     android:maxLines="1"
     android:text="@string/accountPassword"
     android:textSize="14sp"
-    app:layout_constraintBottom_toBottomOf="parent"
     app:layout_constraintEnd_toEndOf="@+id/authBasicUserNameLabel"
     app:layout_constraintStart_toStartOf="parent"
     app:layout_constraintTop_toBottomOf="@id/authBasicUserNameLabel" />
@@ -87,5 +85,17 @@
     android:text="@string/accountPasswordShow"
     app:layout_constraintBaseline_toBaselineOf="@id/authBasicPasswordLabel"
     app:layout_constraintEnd_toEndOf="parent" />
+
+  <Button
+    android:id="@+id/authBasicLogin"
+    android:layout_width="256dp"
+    android:layout_height="48dp"
+    android:layout_marginTop="32dp"
+    android:layout_marginBottom="16dp"
+    android:text="@string/accountLogin"
+    app:layout_constraintBottom_toBottomOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintTop_toBottomOf="@+id/authBasicPasswordShow" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
