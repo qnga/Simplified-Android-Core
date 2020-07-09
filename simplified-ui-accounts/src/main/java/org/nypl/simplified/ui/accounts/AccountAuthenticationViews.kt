@@ -2,7 +2,6 @@ package org.nypl.simplified.ui.accounts
 
 import android.view.View
 import android.view.View.GONE
-import android.view.View.INVISIBLE
 import android.view.View.VISIBLE
 import android.view.ViewGroup
 import org.nypl.simplified.accounts.api.AccountPassword
@@ -18,6 +17,10 @@ import org.nypl.simplified.ui.accounts.AccountAuthenticationViewBindings.ViewsFo
 import org.nypl.simplified.ui.accounts.AccountAuthenticationViewBindings.ViewsForCOPPAAgeGate
 import org.nypl.simplified.ui.accounts.AccountAuthenticationViewBindings.ViewsForOAuthWithIntermediary
 import org.nypl.simplified.ui.accounts.AccountAuthenticationViewBindings.ViewsForSAML2_0
+
+/**
+ * A class that handles the visibility for a set of overlapping views.
+ */
 
 class AccountAuthenticationViews(
   private val viewGroup: ViewGroup,
@@ -52,23 +55,52 @@ class AccountAuthenticationViews(
       this.coppa
     )
 
+  /**
+   * Lock all of the views in the collection.
+   *
+   * @see [AccountAuthenticationViewBindings.lock]
+   */
+
   fun lock() {
     this.viewGroups.forEach(AccountAuthenticationViewBindings::lock)
   }
+
+  /**
+   * Unlock all of the views in the collection.
+   *
+   * @see [AccountAuthenticationViewBindings.unlock]
+   */
 
   fun unlock() {
     this.viewGroups.forEach(AccountAuthenticationViewBindings::unlock)
   }
 
+  /**
+   * Clear all of the views in the collection. Must only be called once.
+   *
+   * @see [AccountAuthenticationViewBindings.clear]
+   */
+
   fun clear() {
     this.viewGroups.forEach(AccountAuthenticationViewBindings::clear)
   }
+
+  /**
+   * Set the status of all of the login buttons in the collection.
+   *
+   * @see [AccountAuthenticationViewBindings.setLoginButtonStatus]
+   */
 
   fun setLoginButtonStatus(status: AccountLoginButtonStatus) {
     this.viewGroups.forEach {
       it.setLoginButtonStatus(status)
     }
   }
+
+  /**
+   * Set the visibility of the views such that the displayed view is the one that's suitable
+   * for the given authentication description.
+   */
 
   fun showFor(description: AccountProviderAuthenticationDescription) {
     this.viewGroups.forEach { it.viewGroup.visibility = GONE }
@@ -99,6 +131,11 @@ class AccountAuthenticationViews(
     )
   }
 
+  /**
+   * @return `true` if the views have all of the information required to attempt a login for the
+   * given authentication description.
+   */
+
   fun isSatisfiedFor(description: AccountProviderAuthenticationDescription): Boolean {
     return when (description) {
       is COPPAAgeGate ->
@@ -114,6 +151,10 @@ class AccountAuthenticationViews(
     }
   }
 
+  /**
+   * Set the state of any COPPA gate related fields.
+   */
+
   fun setCOPPAState(
     isOver13: Boolean,
     onAgeCheckboxClicked: (View) -> Unit
@@ -124,9 +165,17 @@ class AccountAuthenticationViews(
     )
   }
 
+  /**
+   * @return The current Basic authentication password
+   */
+
   fun getBasicPassword(): AccountPassword {
     return this.basic.getPassword()
   }
+
+  /**
+   * @return The current Basic authentication username
+   */
 
   fun getBasicUser(): AccountUsername {
     return this.basic.getUser()

@@ -25,12 +25,9 @@ import com.io7m.junreachable.UnreachableCodeException
 import io.reactivex.disposables.Disposable
 import org.joda.time.DateTime
 import org.librarysimplified.services.api.Services
-import org.nypl.simplified.accounts.api.AccountProviderAuthenticationDescription
-import org.nypl.simplified.accounts.api.AccountEvent
-import org.nypl.simplified.accounts.api.AccountPassword
-import org.nypl.simplified.accounts.api.AccountEventLoginStateChanged
-import org.nypl.simplified.accounts.api.AccountUsername
 import org.nypl.simplified.accounts.api.AccountAuthenticationCredentials
+import org.nypl.simplified.accounts.api.AccountEvent
+import org.nypl.simplified.accounts.api.AccountEventLoginStateChanged
 import org.nypl.simplified.accounts.api.AccountLoginState.AccountLoggedIn
 import org.nypl.simplified.accounts.api.AccountLoginState.AccountLoggingIn
 import org.nypl.simplified.accounts.api.AccountLoginState.AccountLoggingInWaitingForExternalAuthentication
@@ -38,6 +35,9 @@ import org.nypl.simplified.accounts.api.AccountLoginState.AccountLoggingOut
 import org.nypl.simplified.accounts.api.AccountLoginState.AccountLoginFailed
 import org.nypl.simplified.accounts.api.AccountLoginState.AccountLogoutFailed
 import org.nypl.simplified.accounts.api.AccountLoginState.AccountNotLoggedIn
+import org.nypl.simplified.accounts.api.AccountPassword
+import org.nypl.simplified.accounts.api.AccountProviderAuthenticationDescription
+import org.nypl.simplified.accounts.api.AccountUsername
 import org.nypl.simplified.accounts.database.api.AccountType
 import org.nypl.simplified.accounts.database.api.AccountsDatabaseNonexistentException
 import org.nypl.simplified.buildconfig.api.BuildConfigurationServiceType
@@ -504,9 +504,9 @@ class AccountFragment : Fragment() {
   }
 
   private fun onTryBasicLogin(description: AccountProviderAuthenticationDescription.Basic) {
-    val accountPassword : AccountPassword =
+    val accountPassword: AccountPassword =
       this.authenticationViews.getBasicPassword()
-    val accountUsername : AccountUsername =
+    val accountUsername: AccountUsername =
       this.authenticationViews.getBasicUser()
 
     val request =
@@ -688,7 +688,7 @@ class AccountFragment : Fragment() {
             )
           }
           is AccountAuthenticationCredentials.OAuthWithIntermediary -> {
-
+            // Nothing
           }
         }
 
@@ -784,7 +784,7 @@ class AccountFragment : Fragment() {
       }
       is AsCancelButtonEnabled,
       AsCancelButtonDisabled -> {
-
+        // Nothing
       }
     }
   }

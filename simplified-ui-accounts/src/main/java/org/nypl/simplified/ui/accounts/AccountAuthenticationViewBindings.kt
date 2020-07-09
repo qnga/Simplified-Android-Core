@@ -16,8 +16,12 @@ import org.nypl.simplified.accounts.api.AccountProviderAuthenticationDescription
 import org.nypl.simplified.accounts.api.AccountProviderAuthenticationDescription.KeyboardInput.NO_INPUT
 import org.nypl.simplified.accounts.api.AccountProviderAuthenticationDescription.KeyboardInput.NUMBER_PAD
 import org.nypl.simplified.accounts.api.AccountUsername
-import org.nypl.simplified.ui.accounts.AccountLoginButtonStatus.*
-import java.lang.IllegalStateException
+import org.nypl.simplified.ui.accounts.AccountLoginButtonStatus.AsCancelButtonDisabled
+import org.nypl.simplified.ui.accounts.AccountLoginButtonStatus.AsCancelButtonEnabled
+import org.nypl.simplified.ui.accounts.AccountLoginButtonStatus.AsLoginButtonDisabled
+import org.nypl.simplified.ui.accounts.AccountLoginButtonStatus.AsLoginButtonEnabled
+import org.nypl.simplified.ui.accounts.AccountLoginButtonStatus.AsLogoutButtonDisabled
+import org.nypl.simplified.ui.accounts.AccountLoginButtonStatus.AsLogoutButtonEnabled
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -261,19 +265,19 @@ sealed class AccountAuthenticationViewBindings {
   ) : Base() {
 
     override fun lock() {
-
+      // Nothing
     }
 
     override fun unlock() {
-
+      // Nothing
     }
 
     override fun setLoginButtonStatus(status: AccountLoginButtonStatus) {
-
+      // Nothing
     }
 
     override fun clearActual() {
-
+      // Nothing
     }
 
     companion object {
@@ -288,19 +292,19 @@ sealed class AccountAuthenticationViewBindings {
   ) : Base() {
 
     override fun lock() {
-
+      // Nothing
     }
 
     override fun unlock() {
-
+      // Nothing
     }
 
     override fun setLoginButtonStatus(status: AccountLoginButtonStatus) {
-
+      // Nothing
     }
 
     override fun clearActual() {
-
+      // Nothing
     }
 
     companion object {
@@ -316,15 +320,15 @@ sealed class AccountAuthenticationViewBindings {
   ) : Base() {
 
     override fun lock() {
-
+      // Nothing
     }
 
     override fun unlock() {
-
+      // Nothing
     }
 
     override fun setLoginButtonStatus(status: AccountLoginButtonStatus) {
-
+      // Nothing
     }
 
     override fun clearActual() {
@@ -356,19 +360,19 @@ sealed class AccountAuthenticationViewBindings {
   ) : Base() {
 
     override fun lock() {
-
+      // Nothing
     }
 
     override fun unlock() {
-
+      // Nothing
     }
 
     override fun setLoginButtonStatus(status: AccountLoginButtonStatus) {
-
+      // Nothing
     }
 
     override fun clearActual() {
-
+      // Nothing
     }
 
     companion object {
